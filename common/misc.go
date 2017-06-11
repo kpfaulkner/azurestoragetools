@@ -45,6 +45,7 @@ const (
 const (
 	CommandListBlobs = iota
 	CommandCreateContainer
+	CommandListContainers
 	CommandUnknown
 	CommandUpload
 	CommandDownload

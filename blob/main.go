@@ -14,11 +14,15 @@ var Version string
 
 // getCommand. Naive way to determine what the actual user wants to do. Copy, list etc etc.
 // rework when it gets more complex.
-func getCommand(uploadCommand bool, downloadCommand bool, listCommand bool, createContainerCommand bool) int {
+func getCommand(uploadCommand bool, downloadCommand bool, listCommand bool, createContainerCommand bool, listContainersCommand bool) int {
 
-	if !uploadCommand && !downloadCommand && !listCommand && !createContainerCommand {
+	if !uploadCommand && !downloadCommand && !listCommand && !createContainerCommand && !listContainersCommand {
 		fmt.Println("No command given")
 		os.Exit(1)
+	}
+
+	if listContainersCommand {
+		return common.CommandListContainers
 	}
 
 	if uploadCommand {
@@ -52,11 +56,10 @@ func setupConfiguration() *common.CloudConfig {
 	var upload = flag.Bool("upload", false, "Upload from local filesystem to Azure")
 	var download = flag.Bool("download", false, "Download to local filesystem from Azure")
 	var listCommand = flag.Bool("list", false, "List blobs in container")
+	var listContainersCommand = flag.Bool("listcontainers", false, "List available containers")
 	var createContainerCommand = flag.Bool("createcontainer", false, "Create container for Azure")
 	var containerName = flag.String("container", "", "Container used for command")
 	var blobPrefix = flag.String("blobprefix", "", "Optional: BlobPrefix for download command. This can either be entire blob name or just a prefix.")
-
-	var replace = flag.Bool("replace", true, "Replace blob if already exists")
 
 	var azureDefaultAccountName = flag.String("AzureDefaultAccountName", "", "Default Azure Account Name")
 	var azureDefaultAccountKey = flag.String("AzureDefaultAccountKey", "", "Default Azure Account Key")
@@ -71,11 +74,10 @@ func setupConfiguration() *common.CloudConfig {
 			os.Exit(1)
 		}
 
-		config.Command = getCommand(*upload, *download, *listCommand, *createContainerCommand)
+		config.Command = getCommand(*upload, *download, *listCommand, *createContainerCommand, *listContainersCommand)
 		config.Configuration[common.Local] = *localFilesystem
 		config.Configuration[common.Container] = *containerName
 		config.Configuration[common.BlobPrefix] = *blobPrefix
-		config.Replace = *replace
 		config.ConcurrentCount = *concurrentCount
 
 		config.Configuration[common.AzureDefaultAccountName] = os.Getenv("ACCOUNT_NAME")
@@ -135,7 +137,6 @@ func main() {
 		break
 
 	case common.CommandListBlobs:
-		log.Debugf("going to list")
 		blobList, err := bh.ListBlobsInContainer(config.Configuration[common.Container])
 		if err != nil {
 			log.Fatal(err)
@@ -143,6 +144,17 @@ func main() {
 
 		for _, b := range blobList {
 			fmt.Printf("%s\n", b.Name)
+		}
+		break
+
+	case common.CommandListContainers:
+		containerList, err := bh.ListContainers()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, c := range containerList {
+			fmt.Printf("%s\n", c.Name)
 		}
 		break
 

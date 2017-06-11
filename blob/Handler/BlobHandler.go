@@ -37,11 +37,6 @@ func NewBlobHandler(accountName string, accountKey string, concurrentFactor int)
 	return bh, nil
 }
 
-// DownloadFile downloads blob to local filesystem
-func (bh BlobHandler) DownloadFile(containerName string, blobName string, filePath string) error {
-	return nil
-}
-
 // Delete a blob
 func (bh BlobHandler) Delete(containerName string, blobName string) error {
 	return nil
@@ -89,6 +84,31 @@ func (bh BlobHandler) ListBlobsInContainer(containerName string) ([]storage.Blob
 
 		marker = resp.NextMarker
 		if marker == "" || len(resp.Blobs) == 0 {
+			break
+		}
+	}
+
+	return seen, nil
+}
+
+// ListContainers lists the blobs in a container
+func (bh BlobHandler) ListContainers() ([]storage.Container, error) {
+	log.Debugf("ListContainers start")
+
+	seen := []storage.Container{}
+	marker := ""
+	for {
+		containerResponse, err := bh.blobStorageClient.ListContainers(storage.ListContainersParameters{MaxResults: 100, Marker: marker})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, v := range containerResponse.Containers {
+			seen = append(seen, v)
+		}
+
+		marker = containerResponse.NextMarker
+		if marker == "" || len(containerResponse.Containers) == 0 {
 			break
 		}
 	}
