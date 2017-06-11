@@ -26,13 +26,15 @@ const (
 	S3DestRegion       = "S3DestRegion"
 
 	// debug
-	Debug      = "Debug"
-	Source     = "Source"
-	Dest       = "Dest"
-	Replace    = "Replace"
-	Local      = "Local"
-	Container  = "Container"
-	BlobPrefix = "BlobPrefix"
+	Debug          = "Debug"
+	Source         = "Source"
+	Dest           = "Dest"
+	Replace        = "Replace"
+	Local          = "Local"
+	Container      = "Container"
+	BlobPrefix     = "BlobPrefix"
+	Timeout        = "Timeout"
+	SASPermissions = "SASPermissions"
 
 	// container name to create.
 	CreateContainerName = "CreateContainer"

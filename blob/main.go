@@ -67,11 +67,15 @@ func setupConfiguration() *common.CloudConfig {
 	var listCommand = flag.Bool("list", false, "List blobs in container")
 	var listContainersCommand = flag.Bool("listcontainers", false, "List available containers")
 	var createContainerCommand = flag.Bool("createcontainer", false, "Create container for Azure")
-	var generateBlobSASCommand = flag.Bool("blobsas", false, "Generate Blob SAS URL")
-	var generateContainerSASCommand = flag.Bool("containersas", false, "Generate Container SAS URL")
+	//var generateBlobSASCommand = flag.Bool("blobsas", false, "Generate Blob SAS URL")
+	//var generateContainerSASCommand = flag.Bool("containersas", false, "Generate Container SAS URL")
+	var generateBlobSASCommand = false
+	var generateContainerSASCommand = false
+
 	var containerName = flag.String("container", "", "Container used for command")
 	var blobPrefix = flag.String("blobprefix", "", "Optional: BlobPrefix for download command. This can either be entire blob name or just a prefix.")
 	var timeout = flag.String("sastimeout", "", "Optional: Timeout in seconds for generating SAS URL. Defaults to 60 seconds.")
+	var perms = flag.String("sasperms", "", "Optional: SAS permissions. Combination of rw")
 
 	var azureDefaultAccountName = flag.String("AzureDefaultAccountName", "", "Default Azure Account Name")
 	var azureDefaultAccountKey = flag.String("AzureDefaultAccountKey", "", "Default Azure Account Key")
@@ -86,11 +90,12 @@ func setupConfiguration() *common.CloudConfig {
 			os.Exit(1)
 		}
 
-		config.Command = getCommand(*upload, *download, *listCommand, *createContainerCommand, *listContainersCommand, *generateBlobSASCommand, *generateContainerSASCommand)
+		config.Command = getCommand(*upload, *download, *listCommand, *createContainerCommand, *listContainersCommand, generateBlobSASCommand, generateContainerSASCommand)
 		config.Configuration[common.Local] = *localFilesystem
 		config.Configuration[common.Container] = *containerName
 		config.Configuration[common.BlobPrefix] = *blobPrefix
 		config.Configuration[common.Timeout] = *timeout
+		config.Configuration[common.SASPermissions] = *perms
 		config.ConcurrentCount = *concurrentCount
 
 		config.Configuration[common.AzureDefaultAccountName] = os.Getenv("ACCOUNT_NAME")
@@ -151,7 +156,7 @@ func main() {
 
 	case common.CommandSASURLBlob:
 		timeout, _ := strconv.Atoi(config.Configuration[common.Timeout])
-		url, err := bh.GenerateSASURLForBlob(config.Configuration[common.Container], config.Configuration[common.BlobPrefix], timeout)
+		url, err := bh.GenerateSASURLForBlob(config.Configuration[common.Container], config.Configuration[common.BlobPrefix], timeout, config.Configuration[common.SASPermissions])
 		if err != nil {
 			log.Fatal(err)
 		}

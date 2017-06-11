@@ -3,6 +3,7 @@ package Handler
 import (
 	"azure-sdk-for-go/storage"
 	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -43,8 +44,21 @@ func (bh BlobHandler) Delete(containerName string, blobName string) error {
 }
 
 // GenerateSASURLForBlob generates SAS URL for blob
-func (bh BlobHandler) GenerateSASURLForBlob(containerName string, blobName string, durationInSeconds int) (string, error) {
-	return "", nil
+func (bh BlobHandler) GenerateSASURLForBlob(containerName string, blobName string, durationInSeconds int, permissions string) (string, error) {
+	container := bh.blobStorageClient.GetContainerReference(containerName)
+	blob := container.GetBlobReference(blobName)
+
+	//expiry := time.Now().UTC().Add(time.Second * time.Duration(durationInSeconds))
+	expiry := time.Now().UTC().Add(time.Hour)
+
+	log.Debugf("now %s", time.Now().UTC())
+	log.Debugf("expiry %s", expiry)
+	u, err := blob.GetSASURI(expiry, permissions)
+	if err != nil {
+		return "", err
+	}
+
+	return u, nil
 }
 
 // GenerateSASURLForContainer generates SAS URL for container
