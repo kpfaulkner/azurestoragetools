@@ -28,9 +28,16 @@ func (bh BlobHandler) UploadFiles(filePath string, containerName string) error {
 
 	// channel to hold names of all local files to copy.
 	filesChannel := make(chan string, 1000)
-	bh.getLocalFiles(filePath, filesChannel)
 
 	bh.launchUploadGoRoutines(containerName, filePath, filesChannel)
+
+	allFiles := bh.getLocalFiles(filePath)
+	fmt.Printf("Copying %d files\n", len(allFiles))
+
+	for _, file := range allFiles {
+		filesChannel <- file
+	}
+
 	close(filesChannel)
 	wg.Wait()
 	return nil
@@ -58,6 +65,7 @@ func (bh BlobHandler) uploadFileFromChannel(containerName string, localFilePrefi
 			// closed...   so all writing is done?  Or what?
 			return
 		}
+		fmt.Printf("uploading %s\n", fileName)
 
 		// calculate blob name
 		blobName := generateBlobName(fileName, localFilePrefix)
@@ -68,11 +76,7 @@ func (bh BlobHandler) uploadFileFromChannel(containerName string, localFilePrefi
 
 		// create blob
 		blob := container.GetBlobReference(blobName)
-		/*err := blob.CreateBlockBlob(nil)
-		if err != nil {
-			log.Errorf("Unable to create block blob %s %s", blobName, err)
-		}
-		*/
+
 		// upload file.
 		uploadFile(fileName, blob)
 	}
@@ -169,16 +173,19 @@ func generateBlobName(pathName string, localFilePrefix string) string {
 	if !fi.IsDir() {
 		log.Debugf("name is %s", fi.Name())
 		return fi.Name()
-	} else {
-		v := pathName[len(localFilePrefix):]
-		s := filepath.ToSlash(v)
-		log.Debugf("pruned generated blob name is %s", s)
-		return s
 	}
+
+	v := pathName[len(localFilePrefix):]
+	s := filepath.ToSlash(v)
+	log.Debugf("pruned generated blob name is %s", s)
+	return s
+
 }
 
 // getLocalFiles gets the local files and puts the names on the filesChannel.
-func (bh BlobHandler) getLocalFiles(filePath string, filesChannel chan string) {
+func (bh BlobHandler) getLocalFiles(filePath string) []string {
+
+	fileSlice := []string{}
 
 	err := filepath.Walk(filePath, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
@@ -186,11 +193,14 @@ func (bh BlobHandler) getLocalFiles(filePath string, filesChannel chan string) {
 		}
 
 		log.Debugf("file %s", path)
-		filesChannel <- path
+		fileSlice = append(fileSlice, path)
+		//filesChannel <- path
 		return nil
 	})
 
 	if err != nil {
 		log.Debugf("ERROR during walk %s", err)
 	}
+
+	return fileSlice
 }

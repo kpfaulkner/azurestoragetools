@@ -54,6 +54,7 @@ func setupConfiguration() *common.CloudConfig {
 	var listCommand = flag.Bool("list", false, "List blobs in container")
 	var createContainerCommand = flag.Bool("createcontainer", false, "Create container for Azure")
 	var containerName = flag.String("container", "", "Container used for command")
+	var blobPrefix = flag.String("blobprefix", "", "Optional: BlobPrefix for download command. This can either be entire blob name or just a prefix.")
 
 	var replace = flag.Bool("replace", true, "Replace blob if already exists")
 
@@ -73,6 +74,7 @@ func setupConfiguration() *common.CloudConfig {
 		config.Command = getCommand(*upload, *download, *listCommand, *createContainerCommand)
 		config.Configuration[common.Local] = *localFilesystem
 		config.Configuration[common.Container] = *containerName
+		config.Configuration[common.BlobPrefix] = *blobPrefix
 		config.Replace = *replace
 		config.ConcurrentCount = *concurrentCount
 
@@ -120,6 +122,13 @@ func main() {
 	switch config.Command {
 	case common.CommandUpload:
 		err := bh.UploadFiles(config.Configuration[common.Local], config.Configuration[common.Container])
+		if err != nil {
+			log.Fatal(err)
+		}
+		break
+
+	case common.CommandDownload:
+		err := bh.DownloadFiles(config.Configuration[common.Container], config.Configuration[common.BlobPrefix], config.Configuration[common.Local])
 		if err != nil {
 			log.Fatal(err)
 		}
