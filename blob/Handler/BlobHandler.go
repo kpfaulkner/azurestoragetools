@@ -43,12 +43,13 @@ func (bh BlobHandler) Delete(containerName string, blobName string) error {
 }
 
 // GenerateSASURLForBlob generates SAS URL for blob
-func (bh BlobHandler) GenerateSASURLForBlob(containerName string, blobName string, durationInMinutes int) (string, error) {
+func (bh BlobHandler) GenerateSASURLForBlob(containerName string, blobName string, durationInSeconds int) (string, error) {
 	return "", nil
 }
 
 // GenerateSASURLForContainer generates SAS URL for container
-func (bh BlobHandler) GenerateSASURLForContainer(containerName string, durationInMinutes int) (string, error) {
+// Doesn't exist yet in SDK!
+func (bh BlobHandler) GenerateSASURLForContainer(containerName string, durationInSeconds int) (string, error) {
 	return "", nil
 }
 
