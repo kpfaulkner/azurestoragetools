@@ -12,10 +12,14 @@ import (
 
 // DownloadFiles downloads blob to local filesystem (filePath)
 // blobPrefix might be a specific blob or just literally a prefix.
+// Firing off goroutine for eachdownload.
+// Will see how this goes, otherwise we'll just throttle to a certain limit?
 func (bh BlobHandler) DownloadFiles(containerName string, blobPrefix string, filePath string) error {
 	container := bh.blobStorageClient.GetContainerReference(containerName)
 
 	blobList := bh.listBlobs(containerName, blobPrefix)
+
+	fmt.Printf("Downloading %d blobs\n", len(blobList))
 
 	for _, blobName := range blobList {
 		blob := container.GetBlobReference(blobName)
@@ -30,7 +34,7 @@ func (bh BlobHandler) DownloadFiles(containerName string, blobPrefix string, fil
 
 		// read it!
 		fmt.Printf("reading %s\n", blobName)
-		bh.downloadFile(sr, localName)
+		go bh.downloadFile(sr, localName)
 	}
 
 	return nil
@@ -39,11 +43,11 @@ func (bh BlobHandler) DownloadFiles(containerName string, blobPrefix string, fil
 func (bh *BlobHandler) downloadFile(sr io.ReadCloser, filePath string) error {
 
 	dirPart := filepath.Dir(filePath)
-	os.MkdirAll(dirPart, 0600)
+	os.MkdirAll(dirPart, 0700)
 
-	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0666)
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("create file error %s", err)
 		return err
 	}
 	defer file.Close()
