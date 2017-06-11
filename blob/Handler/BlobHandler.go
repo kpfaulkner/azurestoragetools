@@ -2,6 +2,7 @@ package Handler
 
 import (
 	"azure-sdk-for-go/storage"
+	"sync"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -11,14 +12,16 @@ import (
 type BlobHandler struct {
 
 	// creds.
-	accountName string
-	accountKey  string
-
+	accountName       string
+	accountKey        string
+	concurrentFactor  int
 	blobStorageClient storage.BlobStorageClient
 }
 
+var wg sync.WaitGroup
+
 // NewBlobHandler   create new instance of BlobHandler
-func NewBlobHandler(accountName string, accountKey string) (*BlobHandler, error) {
+func NewBlobHandler(accountName string, accountKey string, concurrentFactor int) (*BlobHandler, error) {
 	bh := new(BlobHandler)
 
 	client, err := storage.NewBasicClient(accountName, accountKey)
@@ -27,17 +30,11 @@ func NewBlobHandler(accountName string, accountKey string) (*BlobHandler, error)
 		return nil, err
 	}
 
+	bh.concurrentFactor = concurrentFactor
 	bh.accountName = accountName
 	bh.accountKey = accountKey
 	bh.blobStorageClient = client.GetBlobService()
 	return bh, nil
-}
-
-// UploadFiles uploads file based off filepath.
-// Can either be single file (ie filePath doesn't end with a / or \)
-// or it can be a directory so, filePath ends with / or \
-func (bh BlobHandler) UploadFiles(filePath string, containerName string) error {
-	return nil
 }
 
 // DownloadFile downloads blob to local filesystem

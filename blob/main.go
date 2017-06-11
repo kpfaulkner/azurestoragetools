@@ -111,7 +111,7 @@ func main() {
 		return
 	}
 
-	bh, err := Handler.NewBlobHandler(config.Configuration[common.AzureDefaultAccountName], config.Configuration[common.AzureDefaultAccountKey])
+	bh, err := Handler.NewBlobHandler(config.Configuration[common.AzureDefaultAccountName], config.Configuration[common.AzureDefaultAccountKey], 5)
 	if err != nil {
 		log.Debugf("Unable to create BlobHandler")
 		return
