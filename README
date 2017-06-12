@@ -1,0 +1,73 @@
+Azure Storage Tools
+===================
+
+Azure Storage Tools (ast) is a set of 3 binaries that perform the common operations on Azure storage accounts. This is NOT for creating of accounts or infrastructure but more about the USING of the
+already created infrastructure.
+
+AST is provided for many platforms:  Windows, Linux, OSX , FreeBSD, NetBSD, OpenBSD all in x86 and x64 variants. 
+
+
+Azure Storage Tools: Blob
+-------------------------
+
+Azure Storage Tools Blob (astblob) is the tool for use again Azure Blob Storage.
+The operations are:
+
+- Upload files
+- Download files
+- Create container
+- List containers
+- List blobs in a container
+
+Planned operations are:
+- Generate SAS url for blob
+- Generate SAS url for container
+
+Example Usage:
+
+Azure account names and account keys can either be passed in by arguments to the executable OR can be set via the environment variables ACCOUNT_NAME and ACCOUNT_KEY.
+Assuming they are set via the environment variables, some command are:
+
+astblob -createcontainer -container temp
+
+This will create a container with the name "temp"
+
+astblob -container temp -list
+
+This will list the blobs in the container "temp"
+
+astblob -container temp -upload -local c:\temp\myfile.txt
+
+This will upload a local file c:\temp\myfile.txt to the container "temp". This is obviously on the Windows platform. Equally on a *nix system the command would replace c:\temp\myfile.txt with an equivent 
+/mypath/myotherpath/file1  etc.
+
+
+Azure Storage Tools: Queue
+-------------------------
+
+Azure Storage Tools Queue (astqueue) is the tool for use again Azure Storage Queues.
+This is NOT implemented yet.
+
+Planned operations are:
+
+- Create Queue
+- Push
+- Pop
+- Peek
+- Get queue length
+
+
+Azure Storage Tools: Table
+-------------------------
+Azure Storage Tools Table (asttable) is the tool for use again Azure Storage Tables.
+This is NOT implemented yet.
+
+Planned operations are:
+
+- Create Table
+- Add Row
+- Lookup Row (via partition key and row key)
+- Edit row
+
+
+
