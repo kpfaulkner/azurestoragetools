@@ -35,6 +35,8 @@ const (
 	BlobPrefix     = "BlobPrefix"
 	Timeout        = "Timeout"
 	SASPermissions = "SASPermissions"
+	Queue          = "Queue"
+	QueueMessage   = "QueueMessage"
 
 	// container name to create.
 	CreateContainerName = "CreateContainer"
@@ -53,6 +55,13 @@ const (
 	CommandDownload
 	CommandSASURLBlob
 	CommandSASURLContainer
+
+	CommandPushQueue
+	CommandPopQueue
+	CommandPeekQueue
+	CommandSizeQueue
+	CommandCreateQueue
+	CommandGernateQueueSAS
 )
 
 // CloudConfig UGLY UGLY UGLY way to store the configuration.

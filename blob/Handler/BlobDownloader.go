@@ -45,6 +45,7 @@ func (bh *BlobHandler) downloadFile(sr io.ReadCloser, filePath string) error {
 	dirPart := filepath.Dir(filePath)
 	os.MkdirAll(dirPart, 0700)
 
+	log.Debugf("downloading to file %s", filePath)
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Fatalf("create file error %s", err)

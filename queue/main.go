@@ -1,147 +1,99 @@
 package main
 
 import (
-	"azurecopy/azurecopy"
-	"azurecopy/azurecopy/models"
-	"azurecopy/azurecopy/utils/misc"
+	"azurestoragetools/blob/Handler"
+	"azurestoragetools/common"
 	"flag"
 	"fmt"
-
 	"os"
+	"strconv"
 
 	log "github.com/Sirupsen/logrus"
 )
 
 var Version string
 
-func generateSpace(c int) string {
-	s := ""
-	for i := 0; i < c; i++ {
-		s = s + " "
-	}
-
-	return s
-}
-
-func printContainer(container *models.SimpleContainer, depth int) {
-	s := generateSpace(depth)
-
-	log.Printf("%scontainer: %s", s, container.Name)
-
-	depth = depth + 2
-	s = generateSpace(depth)
-
-	for _, b := range container.BlobSlice {
-		log.Printf("%sblob: %s", s, b.Name)
-	}
-
-	for _, c := range container.ContainerSlice {
-		printContainer(c, depth)
-	}
-
-}
-
 // getCommand. Naive way to determine what the actual user wants to do. Copy, list etc etc.
 // rework when it gets more complex.
-func getCommand(copyCommand bool, listCommand bool, createContainerCommand string, copyBlobCommand bool) int {
+func getCommand(push bool, pop bool, peek bool, size bool, createQueueCommand bool, generateQueueSASCommand bool) int {
 
-	if !copyCommand && !listCommand && createContainerCommand == "" && !copyBlobCommand {
+	if !push && !pop && !peek && !size && !createQueueCommand && !generateQueueSASCommand {
 		fmt.Println("No command given")
 		os.Exit(1)
 	}
 
-	if copyCommand {
-		return misc.CommandCopy
+	if push {
+		return common.CommandPushQueue
 	}
 
-	if copyBlobCommand {
-		return misc.CommandCopyBlob
+	if pop {
+		return common.CommandPopQueue
 	}
 
-	if listCommand {
-		return misc.CommandList
+	if peek {
+		return common.CommandPeekQueue
 	}
 
-	if createContainerCommand != "" {
-		log.Debug("createcommand issued")
-		return misc.CommandCreateContainer
+	if size {
+		return common.CommandSizeQueue
+	}
+
+	if createQueueCommand {
+		return common.CommandCreateQueue
+	}
+
+	if generateQueueSASCommand {
+		return common.CommandGernateQueueSAS
 	}
 
 	log.Fatal("unsure of command to use")
-	return misc.CommandUnknown
+	return common.CommandUnknown
 }
 
-func setupConfiguration() *misc.CloudConfig {
-	config := misc.NewCloudConfig()
-
-	var concurrentCount = flag.Uint("cc", 5, "Concurrent Count. How many blobs are copied concurrently")
+func setupConfiguration() *common.CloudConfig {
+	config := common.NewCloudConfig()
 
 	var version = flag.Bool("version", false, "Display Version")
-	var source = flag.String("source", "", "Source URL")
-	var dest = flag.String("dest", "", "Destination URL")
 	var debug = flag.Bool("debug", false, "Debug output")
-	var copyCommand = flag.Bool("copy", false, "Copy from source to destination")
-	var copyBlobCommand = flag.Bool("copyblob", false, "Copy from source to destination using Azure CopyBlob flag. Can only be used if Azure is destination")
+	var push = flag.Bool("push", false, "Push message to queue")
+	var msg = flag.String("message", "", "Message to push")
+	var pop = flag.Bool("pop", false, "Pop message from queue")
+	var peek = flag.Bool("peek", false, "Peek message at from of queue")
+	var size = flag.Bool("size", false, "Get size of queue")
+	var createQueueCommand = flag.Bool("createqueue", false, "Create queue for Azure")
+	var generateQueueSASCommand = flag.Bool("queuesas", false, "Generate Queue SAS URL")
 
-	//var copyBlobCommand = false
-
-	var listCommand = flag.Bool("list", false, "List contents from source")
-	var createContainerCommand = flag.String("createcontainer", "", "Create container for destination")
-
-	var replace = flag.Bool("replace", true, "Replace blob if already exists")
+	var queueName = flag.String("queue", "", "Queue used for command")
+	var timeout = flag.String("sastimeout", "60", "Optional: Timeout in seconds for generating SAS URL. Defaults to 60 seconds.")
+	var perms = flag.String("sasperms", "r", "Optional: SAS permissions. Combination of rw")
 
 	var azureDefaultAccountName = flag.String("AzureDefaultAccountName", "", "Default Azure Account Name")
 	var azureDefaultAccountKey = flag.String("AzureDefaultAccountKey", "", "Default Azure Account Key")
-	var azureSourceAccountName = flag.String("AzureSourceAccountName", "", "Source Azure Account Name")
-	var azureSourceAccountKey = flag.String("AzureSourceAccountKey", "", "Source Azure Account Key")
-	var azureDestAccountName = flag.String("AzureDestAccountName", "", "Destination Azure Account Name")
-	var azureDestAccountKey = flag.String("AzureDestAccountKey", "", "Destination Azure Account Key")
-
-	var s3DefaultAccessID = flag.String("S3DefaultAccessID", "", "Default S3 Access ID")
-	var s3DefaultAccessSecret = flag.String("S3DefaultAccessSecret", "", "Default S3 Access Secret")
-	var s3DefaultRegion = flag.String("S3DefaultRegion", "", "Default S3 Region")
-	var s3SourceAccessID = flag.String("S3SourceAccessID", "", "Source S3 Access ID")
-	var s3SourceAccessSecret = flag.String("S3SourceAccessSecret", "", "Source S3 Access Secret")
-	var s3SourceRegion = flag.String("S3SourceRegion", "", "Source S3 Region")
-	var s3DestAccessID = flag.String("S3DestAccessID", "", "Destination S3 Access ID")
-	var s3DestAccessSecret = flag.String("S3DestAccessSecret", "", "Destination S3 Access Secret")
-	var s3DestRegion = flag.String("S3DestRegion", "", "Destination S3 Region")
-
 	flag.Parse()
 
 	config.Version = *version
 	config.Debug = *debug
 	if !*version {
 
-		// seems toooooo manual. Figure out something nicer later.
-		if *concurrentCount > 1000 {
-			fmt.Printf("Maximum number for concurrent count is 1000")
-			os.Exit(1)
+		config.Command = getCommand(*push, *pop, *peek, *size, *createQueueCommand, *generateQueueSASCommand)
+		config.Configuration[common.Queue] = *queueName
+		config.Configuration[common.QueueMessage] = *msg
+		config.Configuration[common.Timeout] = *timeout
+		config.Configuration[common.SASPermissions] = *perms
+		config.ConcurrentCount = *concurrentCount
+
+		config.Configuration[common.AzureDefaultAccountName] = os.Getenv("ACCOUNT_NAME")
+		config.Configuration[common.AzureDefaultAccountKey] = os.Getenv("ACCOUNT_KEY")
+
+		// passed params trumps env vars.
+		if *azureDefaultAccountName != "" {
+			config.Configuration[common.AzureDefaultAccountName] = *azureDefaultAccountName
 		}
 
-		config.Command = getCommand(*copyCommand, *listCommand, *createContainerCommand, *copyBlobCommand)
-		config.Configuration[misc.Source] = *source
-		config.Configuration[misc.Dest] = *dest
-		config.Replace = *replace
-		config.ConcurrentCount = *concurrentCount
-		config.Configuration[misc.CreateContainerName] = *createContainerCommand
+		if *azureDefaultAccountKey != "" {
+			config.Configuration[common.AzureDefaultAccountKey] = *azureDefaultAccountKey
+		}
 
-		config.Configuration[misc.AzureDefaultAccountName] = *azureDefaultAccountName
-		config.Configuration[misc.AzureDefaultAccountKey] = *azureDefaultAccountKey
-		config.Configuration[misc.AzureSourceAccountName] = *azureSourceAccountName
-		config.Configuration[misc.AzureSourceAccountKey] = *azureSourceAccountKey
-		config.Configuration[misc.AzureDestAccountName] = *azureDestAccountName
-		config.Configuration[misc.AzureDestAccountKey] = *azureDestAccountKey
-
-		config.Configuration[misc.S3DefaultAccessID] = *s3DefaultAccessID
-		config.Configuration[misc.S3DefaultAccessSecret] = *s3DefaultAccessSecret
-		config.Configuration[misc.S3DefaultRegion] = *s3DefaultRegion
-		config.Configuration[misc.S3SourceAccessID] = *s3SourceAccessID
-		config.Configuration[misc.S3SourceAccessSecret] = *s3SourceAccessSecret
-		config.Configuration[misc.S3SourceRegion] = *s3SourceRegion
-		config.Configuration[misc.S3DestAccessID] = *s3DestAccessID
-		config.Configuration[misc.S3DestAccessSecret] = *s3DestAccessSecret
-		config.Configuration[misc.S3DestRegion] = *s3DestRegion
 	}
 
 	return config
@@ -165,40 +117,76 @@ func main() {
 		return
 	}
 
-	ac := azurecopy.NewAzureCopy(*config)
+	bh, err := Handler.NewBlobHandler(config.Configuration[common.AzureDefaultAccountName], config.Configuration[common.AzureDefaultAccountKey], 5)
+	if err != nil {
+		log.Debugf("Unable to create BlobHandler")
+		return
+	}
 
 	switch config.Command {
-	case misc.CommandCopy:
-		err := ac.CopyBlobByURL(config.Replace, false)
+
+	case common.CommandUpload:
+		err := bh.UploadFiles(config.Configuration[common.Local], config.Configuration[common.Container])
 		if err != nil {
 			log.Fatal(err)
 		}
 		break
 
-	case misc.CommandCopyBlob:
-		err := ac.CopyBlobByURL(config.Replace, true)
+	case common.CommandDownload:
+		err := bh.DownloadFiles(config.Configuration[common.Container], config.Configuration[common.BlobPrefix], config.Configuration[common.Local])
 		if err != nil {
 			log.Fatal(err)
 		}
 		break
 
-	case misc.CommandList:
-		container, err := ac.ListContainer()
+	case common.CommandSASURLBlob:
+		timeout, _ := strconv.Atoi(config.Configuration[common.Timeout])
+		url, err := bh.GenerateSASURLForBlob(config.Configuration[common.Container], config.Configuration[common.BlobPrefix], timeout, config.Configuration[common.SASPermissions])
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		log.Debug("List results")
-		container.DisplayContainer("")
+		fmt.Printf("SAS URL %s", url)
 		break
 
-	case misc.CommandCreateContainer:
-		err := ac.CreateContainer(config.Configuration[misc.CreateContainerName])
+	case common.CommandSASURLContainer:
+		timeout, _ := strconv.Atoi(config.Configuration[common.Timeout])
+		url, err := bh.GenerateSASURLForContainer(config.Configuration[common.Container], timeout)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("SAS URL %s", url)
+		break
+
+	case common.CommandListBlobs:
+		blobList, err := bh.ListBlobsInContainer(config.Configuration[common.Container])
 		if err != nil {
 			log.Fatal(err)
 		}
 
-	case misc.CommandUnknown:
+		for _, b := range blobList {
+			fmt.Printf("%s\n", b.Name)
+		}
+		break
+
+	case common.CommandListContainers:
+		containerList, err := bh.ListContainers()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, c := range containerList {
+			fmt.Printf("%s\n", c.Name)
+		}
+		break
+
+	case common.CommandCreateContainer:
+		err := bh.CreateContainer(config.Configuration[common.Container])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	case common.CommandUnknown:
 		log.Fatal("Unsure of command to execute")
 	}
 
