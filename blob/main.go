@@ -68,9 +68,9 @@ func setupConfiguration() *common.CloudConfig {
 	var listContainersCommand = flag.Bool("listcontainers", false, "List available containers")
 	var createContainerCommand = flag.Bool("createcontainer", false, "Create container for Azure")
 	var generateBlobSASCommand = flag.Bool("blobsas", false, "Generate Blob SAS URL")
-	var generateContainerSASCommand = flag.Bool("containersas", false, "Generate Container SAS URL")
+	//var generateContainerSASCommand = flag.Bool("containersas", false, "Generate Container SAS URL")
 	//var generateBlobSASCommand = false
-	//var generateContainerSASCommand = false
+	var generateContainerSASCommand = false
 
 	var containerName = flag.String("container", "", "Container used for command")
 	var blobPrefix = flag.String("blobprefix", "", "Optional: BlobPrefix for download command. This can either be entire blob name or just a prefix.")
@@ -90,7 +90,7 @@ func setupConfiguration() *common.CloudConfig {
 			os.Exit(1)
 		}
 
-		config.Command = getCommand(*upload, *download, *listCommand, *createContainerCommand, *listContainersCommand, *generateBlobSASCommand, *generateContainerSASCommand)
+		config.Command = getCommand(*upload, *download, *listCommand, *createContainerCommand, *listContainersCommand, *generateBlobSASCommand, generateContainerSASCommand)
 		config.Configuration[common.Local] = *localFilesystem
 		config.Configuration[common.Container] = *containerName
 		config.Configuration[common.BlobPrefix] = *blobPrefix
