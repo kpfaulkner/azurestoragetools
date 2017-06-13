@@ -80,7 +80,6 @@ func setupConfiguration() *common.CloudConfig {
 		config.Configuration[common.QueueMessage] = *msg
 		config.Configuration[common.Timeout] = *timeout
 		config.Configuration[common.SASPermissions] = *perms
-		config.ConcurrentCount = *concurrentCount
 
 		config.Configuration[common.AzureDefaultAccountName] = os.Getenv("ACCOUNT_NAME")
 		config.Configuration[common.AzureDefaultAccountKey] = os.Getenv("ACCOUNT_KEY")
