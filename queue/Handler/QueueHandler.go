@@ -144,7 +144,21 @@ func (qh QueueHandler) PopQueue(queueName string) (string, error) {
 
 // PeekQueue creates a new queue
 func (qh QueueHandler) PeekQueue(queueName string) (string, error) {
-	return "", nil
+	queue := qh.queueStorageClient.GetQueueReference(queueName)
+	doesExist, err := queue.Exists()
+	if err != nil {
+		return "", err
+	}
+
+	if !doesExist {
+		return "", errors.New("Queue does not exist")
+	}
+
+	msgList, err := queue.PeekMessages(&storage.PeekMessagesOptions{NumOfMessages: 1})
+	if err != nil {
+		return "", err
+	}
+	return msgList[0].Text, nil
 }
 
 // QueueSize returns size of queue

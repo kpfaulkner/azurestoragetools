@@ -213,6 +213,15 @@ func main() {
 		}
 
 		break
+
+	case common.CommandPeekQueue:
+		msg, err := qh.PeekQueue(config.Configuration[common.Queue])
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s", msg)
+		break
+
 	case common.CommandUnknown:
 		log.Fatal("Unsure of command to execute")
 	}
