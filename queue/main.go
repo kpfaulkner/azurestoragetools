@@ -64,7 +64,9 @@ func setupConfiguration() *common.CloudConfig {
 	var generateQueueSASCommand = flag.Bool("queuesas", false, "Generate Queue SAS URL")
 
 	var queueName = flag.String("queue", "", "Queue used for command")
-	var timeout = flag.String("sastimeout", "60", "Optional: Timeout in seconds for generating SAS URL. Defaults to 60 seconds.")
+	var sastimeout = flag.String("sastimeout", "60", "Optional: Timeout in seconds for generating SAS URL. Defaults to 60 seconds.")
+	var visibilityTimeout = flag.String("vtimeout", "60", "Optional: visibility time for queue messsage. Defaults to 60 seconds.")
+	var ttl = flag.String("ttl", "60", "Optional: Time to live for queue messsage. Defaults to 60 seconds.")
 	var perms = flag.String("sasperms", "r", "Optional: SAS permissions. Combination of rw")
 
 	var azureDefaultAccountName = flag.String("AzureDefaultAccountName", "", "Default Azure Account Name")
@@ -78,7 +80,10 @@ func setupConfiguration() *common.CloudConfig {
 		config.Command = getCommand(*push, *pop, *peek, *size, *createQueueCommand, *generateQueueSASCommand)
 		config.Configuration[common.Queue] = *queueName
 		config.Configuration[common.QueueMessage] = *msg
-		config.Configuration[common.Timeout] = *timeout
+		config.Configuration[common.VisibilityTimeout] = *visibilityTimeout
+		config.Configuration[common.TTL] = *ttl
+		config.Configuration[common.SASTimeout] = *sastimeout
+
 		config.Configuration[common.SASPermissions] = *perms
 
 		config.Configuration[common.AzureDefaultAccountName] = os.Getenv("ACCOUNT_NAME")
@@ -132,11 +137,20 @@ func main() {
 		break
 
 	case common.CommandPushQueue:
-		timeout, err := strconv.Atoi(config.Configuration[common.Timeout])
+		ttl, err := strconv.Atoi(config.Configuration[common.TTL])
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = qh.PushQueue(config.Configuration[common.Queue], config.Configuration[common.QueueMessage], timeout, timeout)
+
+		visibilityTimeout, err := strconv.Atoi(config.Configuration[common.VisibilityTimeout])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		//ttl = 1
+		//		visibilityTimeout = 1
+
+		err = qh.PushQueue(config.Configuration[common.Queue], config.Configuration[common.QueueMessage], ttl, visibilityTimeout)
 		if err != nil {
 			log.Fatal(err)
 		}

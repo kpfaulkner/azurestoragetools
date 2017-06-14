@@ -3,7 +3,6 @@
 *.a
 *.so
 *.dll
-*.cmd
 
 # Folders
 _obj

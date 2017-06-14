@@ -54,6 +54,7 @@ func (qh QueueHandler) CreateQueue(queueName string) error {
 
 // PushQueue creates a new queue
 func (qh QueueHandler) PushQueue(queueName string, message string, timeToLive int, visibilityTimeout int) error {
+	log.Debugf("PushQueue %s: %s : %d %d", queueName, message, timeToLive, visibilityTimeout)
 	queue := qh.queueStorageClient.GetQueueReference(queueName)
 	doesExist, err := queue.Exists()
 	if err != nil {
