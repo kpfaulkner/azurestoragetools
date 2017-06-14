@@ -63,7 +63,8 @@ const (
 	CommandPeekQueue
 	CommandSizeQueue
 	CommandCreateQueue
-	CommandGernateQueueSAS
+	CommandGenerateQueueSAS
+	CommandClearQueue
 )
 
 // CloudConfig UGLY UGLY UGLY way to store the configuration.
@@ -80,6 +81,8 @@ type CloudConfig struct {
 	Version bool // display version
 
 	ConcurrentCount uint // how many goroutines do we have in the pool?
+
+	ValidConfig bool // indicates if configuration is valid.
 }
 
 // NewCloudConfig  Make new (and only really) configuration map

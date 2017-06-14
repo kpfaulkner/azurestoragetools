@@ -15,9 +15,9 @@ var Version string
 
 // getCommand. Naive way to determine what the actual user wants to do. Copy, list etc etc.
 // rework when it gets more complex.
-func getCommand(push bool, pop bool, peek bool, size bool, createQueueCommand bool, generateQueueSASCommand bool) int {
+func getCommand(push bool, pop bool, peek bool, size bool, createQueueCommand bool, generateQueueSASCommand bool, clearQueueCommand bool) int {
 
-	if !push && !pop && !peek && !size && !createQueueCommand && !generateQueueSASCommand {
+	if !push && !pop && !peek && !size && !createQueueCommand && !generateQueueSASCommand && !clearQueueCommand {
 		fmt.Println("No command given")
 		os.Exit(1)
 	}
@@ -42,8 +42,12 @@ func getCommand(push bool, pop bool, peek bool, size bool, createQueueCommand bo
 		return common.CommandCreateQueue
 	}
 
+	if clearQueueCommand {
+		return common.CommandClearQueue
+	}
+
 	if generateQueueSASCommand {
-		return common.CommandGernateQueueSAS
+		return common.CommandGenerateQueueSAS
 	}
 
 	log.Fatal("unsure of command to use")
@@ -59,14 +63,15 @@ func setupConfiguration() *common.CloudConfig {
 	var msg = flag.String("message", "", "Message to push")
 	var pop = flag.Bool("pop", false, "Pop message from queue")
 	var peek = flag.Bool("peek", false, "Peek message at from of queue")
-	var size = flag.Bool("size", false, "Get size of queue")
+	var size = flag.Bool("size", false, "Get approximate size of queue")
+	var clear = flag.Bool("clear", false, "Clear queue")
 	var createQueueCommand = flag.Bool("createqueue", false, "Create queue for Azure")
 	var generateQueueSASCommand = flag.Bool("queuesas", false, "Generate Queue SAS URL")
 
 	var queueName = flag.String("queue", "", "Queue used for command")
-	var sastimeout = flag.String("sastimeout", "60", "Optional: Timeout in seconds for generating SAS URL. Defaults to 60 seconds.")
-	var visibilityTimeout = flag.String("vtimeout", "60", "Optional: visibility time for queue messsage. Defaults to 60 seconds.")
-	var ttl = flag.String("ttl", "60", "Optional: Time to live for queue messsage. Defaults to 60 seconds.")
+	var sastimeout = flag.String("sastimeout", "60", "Optional: Timeout in seconds for generating SAS URL. Defaults to 60 seconds")
+	var visibilityTimeout = flag.String("vtimeout", "0", "Optional: visibility time for queue messsage")
+	var ttl = flag.String("ttl", "0", "Optional: Time to live for queue messsage.")
 	var perms = flag.String("sasperms", "r", "Optional: SAS permissions. Combination of rw")
 
 	var azureDefaultAccountName = flag.String("AzureDefaultAccountName", "", "Default Azure Account Name")
@@ -77,13 +82,12 @@ func setupConfiguration() *common.CloudConfig {
 	config.Debug = *debug
 	if !*version {
 
-		config.Command = getCommand(*push, *pop, *peek, *size, *createQueueCommand, *generateQueueSASCommand)
+		config.Command = getCommand(*push, *pop, *peek, *size, *createQueueCommand, *generateQueueSASCommand, *clear)
 		config.Configuration[common.Queue] = *queueName
 		config.Configuration[common.QueueMessage] = *msg
 		config.Configuration[common.VisibilityTimeout] = *visibilityTimeout
 		config.Configuration[common.TTL] = *ttl
 		config.Configuration[common.SASTimeout] = *sastimeout
-
 		config.Configuration[common.SASPermissions] = *perms
 
 		config.Configuration[common.AzureDefaultAccountName] = os.Getenv("ACCOUNT_NAME")
@@ -98,9 +102,35 @@ func setupConfiguration() *common.CloudConfig {
 			config.Configuration[common.AzureDefaultAccountKey] = *azureDefaultAccountKey
 		}
 
+		validateConfig(config)
 	}
 
 	return config
+}
+
+// validateConfig checks if required params are met.
+// if not, we mark the config as invalid and the program will explain and stop.
+// Probably should do it in main where we have other switch statement, but will keep it here for now.
+func validateConfig(config *common.CloudConfig) {
+
+	if config.Configuration[common.Queue] == "" {
+		fmt.Printf("Missing queue name\n")
+		config.ValidConfig = false
+	}
+
+	switch config.Command {
+
+	case common.CommandPushQueue:
+		// make sure message exists!
+		if config.Configuration[common.QueueMessage] == "" {
+			fmt.Printf("Error: Require message and queue when pushing!")
+			config.ValidConfig = false
+		}
+		break
+
+	}
+
+	config.ValidConfig = true
 }
 
 // "so it begins"
@@ -129,6 +159,15 @@ func main() {
 
 	switch config.Command {
 
+	case common.CommandSizeQueue:
+		sz, err := qh.QueueSize(config.Configuration[common.Queue])
+		if err != nil {
+			fmt.Printf("ERROR: %s", err)
+		}
+
+		fmt.Printf("%d", sz)
+		break
+
 	case common.CommandCreateQueue:
 		err := qh.CreateQueue(config.Configuration[common.Queue])
 		if err != nil {
@@ -147,10 +186,12 @@ func main() {
 			log.Fatal(err)
 		}
 
-		//ttl = 1
-		//		visibilityTimeout = 1
+		if ttl > 0 && visibilityTimeout > 0 {
+			err = qh.PushQueueWithTimeouts(config.Configuration[common.Queue], config.Configuration[common.QueueMessage], ttl, visibilityTimeout)
+		} else {
+			err = qh.PushQueue(config.Configuration[common.Queue], config.Configuration[common.QueueMessage])
+		}
 
-		err = qh.PushQueue(config.Configuration[common.Queue], config.Configuration[common.QueueMessage], ttl, visibilityTimeout)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -165,6 +206,13 @@ func main() {
 		fmt.Printf("%s", msg)
 		break
 
+	case common.CommandClearQueue:
+		err := qh.ClearQueue(config.Configuration[common.Queue])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		break
 	case common.CommandUnknown:
 		log.Fatal("Unsure of command to execute")
 	}

@@ -52,9 +52,10 @@ func (qh QueueHandler) CreateQueue(queueName string) error {
 	return nil
 }
 
-// PushQueue creates a new queue
-func (qh QueueHandler) PushQueue(queueName string, message string, timeToLive int, visibilityTimeout int) error {
-	log.Debugf("PushQueue %s: %s : %d %d", queueName, message, timeToLive, visibilityTimeout)
+// PushQueue creates a new queue message
+func (qh QueueHandler) pushQueue(queueName string, message string, options *storage.PutMessageOptions) error {
+	log.Debugf("PushQueue %s: %s", queueName, message)
+
 	queue := qh.queueStorageClient.GetQueueReference(queueName)
 	doesExist, err := queue.Exists()
 	if err != nil {
@@ -66,13 +67,46 @@ func (qh QueueHandler) PushQueue(queueName string, message string, timeToLive in
 	}
 
 	msg := queue.GetMessageReference(message)
+	err = msg.Put(options)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// PushQueueWithTimeouts creates a new queue message
+func (qh QueueHandler) PushQueueWithTimeouts(queueName string, message string, timeToLive int, visibilityTimeout int) error {
+	log.Debugf("PushQueue %s: %s : %d %d", queueName, message, timeToLive, visibilityTimeout)
 
 	options := storage.PutMessageOptions{
 		VisibilityTimeout: visibilityTimeout,
 		MessageTTL:        timeToLive,
 	}
+	return qh.pushQueue(queueName, message, &options)
 
-	err = msg.Put(&options)
+}
+
+// PushQueue creates a new queue message
+func (qh QueueHandler) PushQueue(queueName string, message string) error {
+	log.Debugf("PushQueue %s: %s", queueName, message)
+	return qh.pushQueue(queueName, message, nil)
+
+}
+
+// PopQueue creates a new queue
+func (qh QueueHandler) ClearQueue(queueName string) error {
+	queue := qh.queueStorageClient.GetQueueReference(queueName)
+	doesExist, err := queue.Exists()
+	if err != nil {
+		return err
+	}
+
+	if !doesExist {
+		return errors.New("Queue does not exist")
+	}
+
+	err = queue.ClearMessages(nil)
 	if err != nil {
 		return err
 	}
@@ -114,6 +148,22 @@ func (qh QueueHandler) PeekQueue(queueName string) (string, error) {
 }
 
 // QueueSize returns size of queue
-func (qh QueueHandler) QueueSize(queueName string) (int, error) {
-	return 0, nil
+func (qh QueueHandler) QueueSize(queueName string) (uint64, error) {
+	queue := qh.queueStorageClient.GetQueueReference(queueName)
+	doesExist, err := queue.Exists()
+	if err != nil {
+		return 0, err
+	}
+
+	if !doesExist {
+		return 0, errors.New("Queue does not exist")
+	}
+
+	err = queue.GetMetadata(nil)
+	if err != nil {
+		return 0, err
+	}
+
+	log.Debugf("queue %v", queue)
+	return queue.AproxMessageCount, nil
 }
