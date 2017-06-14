@@ -1,8 +1,8 @@
 package main
 
 import (
-	"azurestoragetools/blob/Handler"
 	"azurestoragetools/common"
+	"azurestoragetools/queue/Handler"
 	"flag"
 	"fmt"
 	"os"
@@ -116,74 +116,40 @@ func main() {
 		return
 	}
 
-	bh, err := Handler.NewBlobHandler(config.Configuration[common.AzureDefaultAccountName], config.Configuration[common.AzureDefaultAccountKey], 5)
+	qh, err := Handler.NewQueueHandler(config.Configuration[common.AzureDefaultAccountName], config.Configuration[common.AzureDefaultAccountKey])
 	if err != nil {
-		log.Debugf("Unable to create BlobHandler")
+		log.Debugf("Unable to create QueueHandler %s", err)
 		return
 	}
 
 	switch config.Command {
 
-	case common.CommandUpload:
-		err := bh.UploadFiles(config.Configuration[common.Local], config.Configuration[common.Container])
+	case common.CommandCreateQueue:
+		err := qh.CreateQueue(config.Configuration[common.Queue])
+		if err != nil {
+			fmt.Printf("ERROR: %s", err)
+		}
+		break
+
+	case common.CommandPushQueue:
+		timeout, err := strconv.Atoi(config.Configuration[common.Timeout])
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = qh.PushQueue(config.Configuration[common.Queue], config.Configuration[common.QueueMessage], timeout, timeout)
 		if err != nil {
 			log.Fatal(err)
 		}
 		break
 
-	case common.CommandDownload:
-		err := bh.DownloadFiles(config.Configuration[common.Container], config.Configuration[common.BlobPrefix], config.Configuration[common.Local])
+	case common.CommandPopQueue:
+		msg, err := qh.PopQueue(config.Configuration[common.Queue])
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		fmt.Printf("%s", msg)
 		break
-
-	case common.CommandSASURLBlob:
-		timeout, _ := strconv.Atoi(config.Configuration[common.Timeout])
-		url, err := bh.GenerateSASURLForBlob(config.Configuration[common.Container], config.Configuration[common.BlobPrefix], timeout, config.Configuration[common.SASPermissions])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		fmt.Printf("SAS URL %s", url)
-		break
-
-	case common.CommandSASURLContainer:
-		timeout, _ := strconv.Atoi(config.Configuration[common.Timeout])
-		url, err := bh.GenerateSASURLForContainer(config.Configuration[common.Container], timeout)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("SAS URL %s", url)
-		break
-
-	case common.CommandListBlobs:
-		blobList, err := bh.ListBlobsInContainer(config.Configuration[common.Container])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for _, b := range blobList {
-			fmt.Printf("%s\n", b.Name)
-		}
-		break
-
-	case common.CommandListContainers:
-		containerList, err := bh.ListContainers()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for _, c := range containerList {
-			fmt.Printf("%s\n", c.Name)
-		}
-		break
-
-	case common.CommandCreateContainer:
-		err := bh.CreateContainer(config.Configuration[common.Container])
-		if err != nil {
-			log.Fatal(err)
-		}
 
 	case common.CommandUnknown:
 		log.Fatal("Unsure of command to execute")

@@ -4,6 +4,8 @@ import (
 	"azure-sdk-for-go/storage"
 	"errors"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 type QueueHandler struct {
@@ -40,6 +42,8 @@ func (qh QueueHandler) GenerateSASURL(queueName string, durationInSeconds int, p
 
 // CreateQueue creates a new queue
 func (qh QueueHandler) CreateQueue(queueName string) error {
+
+	log.Debugf("CreateQueue %s", queueName)
 	queue := qh.queueStorageClient.GetQueueReference(queueName)
 	err := queue.Create(nil)
 	if err != nil {
@@ -77,6 +81,28 @@ func (qh QueueHandler) PushQueue(queueName string, message string, timeToLive in
 
 // PopQueue creates a new queue
 func (qh QueueHandler) PopQueue(queueName string) (string, error) {
+	queue := qh.queueStorageClient.GetQueueReference(queueName)
+	doesExist, err := queue.Exists()
+	if err != nil {
+		return "", err
+	}
+
+	if !doesExist {
+		return "", errors.New("Queue does not exist")
+	}
+
+	msgList, err := queue.GetMessages(&storage.GetMessagesOptions{NumOfMessages: 1})
+	if err != nil {
+		return "", err
+	}
+
+	if len(msgList) > 0 {
+		// make sure its marked as read!
+		msgList[0].Delete(nil)
+
+		// just really interested in the content.
+		return msgList[0].Text, nil
+	}
 
 	return "", nil
 }
