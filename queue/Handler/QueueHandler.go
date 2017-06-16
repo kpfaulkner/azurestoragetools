@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sync"
 
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -36,8 +38,26 @@ func NewQueueHandler(accountName string, accountKey string) (*QueueHandler, erro
 
 // GenerateSASURL generates SAS URL for blob
 func (qh QueueHandler) GenerateSASURL(queueName string, durationInSeconds int, permissions string) (string, error) {
+	log.Debugf("GenerateSASURL %s", queueName)
+	queue := qh.queueStorageClient.GetQueueReference(queueName)
+	doesExist, err := queue.Exists()
+	if err != nil {
+		return "", err
+	}
 
-	return "", nil
+	if !doesExist {
+		return "", errors.New("Queue does not exist")
+	}
+
+	expiry := time.Now().UTC().Add(time.Hour)
+
+	sas, err := queue.GetSASURI(expiry, "p")
+	if err != nil {
+		log.Debug("error %s", err)
+		return "", err
+	}
+
+	return sas, nil
 }
 
 // CreateQueue creates a new queue

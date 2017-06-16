@@ -222,6 +222,19 @@ func main() {
 		fmt.Printf("%s", msg)
 		break
 
+	case common.CommandGenerateQueueSAS:
+		timeout, err := strconv.Atoi(config.Configuration[common.SASTimeout])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		msg, err := qh.GenerateSASURL(config.Configuration[common.Queue], timeout, config.Configuration[common.SASPermissions])
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s", msg)
+		break
+
 	case common.CommandUnknown:
 		log.Fatal("Unsure of command to execute")
 	}
